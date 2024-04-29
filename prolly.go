@@ -15,10 +15,13 @@ func main() {
 		lastVal += r.Intn(23)
 		vals = append(vals, lastVal)
 	}
+
+	_ = prollyBinSearch(vals, vals[23029])
+
 	searchCount := vals[len(vals)-1] - vals[0]
 	startTimeBin := time.Now()
 	for i := vals[0]; i <= vals[len(vals)-1]; i++ {
-		_ = macnealeSearch(vals, i)
+		_ = binarySearch(vals, i)
 	}
 	durBin := time.Since(startTimeBin)
 
@@ -52,7 +55,7 @@ func prollyBinSearch(slice []int, target int) int {
 			return high
 		}
 
-		if high-low > 32 {
+		if high-low > 1024 {
 			// Determine the estimated position of the target in the slice, as a float from 0 to 1.
 			minVal := slice[low]
 			maxVal := slice[high]
@@ -71,40 +74,56 @@ func prollyBinSearch(slice []int, target int) int {
 				return estIdx // bulls-eye!
 			}
 
-			neiborhoodSize := (high - low) >> 7 // 1/128th of the current slice size.
-			if neiborhoodSize < 32 {
-				neiborhoodSize = 32
-				if neiborhoodSize > high-low {
-					neiborhoodSize = high - low
-				}
-			}
-
+			// When we miss the target, we know that we are pretty close based on the assumption of distribution.
+			// Therefore, unlike a binary search where we consider everything on the left or right, we instead do
+			// a scan in the appropriate direction using a widening scope. When all is said and done, low and high
+			// will be set to values which are pretty close to the guess.
+			widenScope := 16
 			if slice[estIdx] > target {
 				// We overshot, so search left
 				high = estIdx - 1
-				mayLow := high - neiborhoodSize
-				if mayLow >= low && slice[mayLow] <= target {
-					low = mayLow
-				} // else, our estimate was way off. handle???
+				newLow := high - widenScope
+				for newLow > low && slice[newLow] > target {
+					high = newLow // just verified that newLow is higher than target
+					widenScope <<= 1
+					newLow = high - widenScope
+				}
+				if newLow > low {
+					low = newLow
+				}
 			} else {
 				// We undershot, so search right
 				low = estIdx + 1
-				mayHigh := low + neiborhoodSize
-				if mayHigh <= high && slice[mayHigh] >= target {
-					high = mayHigh
-				} // else, our estimate was way off. handle???
+				newHigh := low + widenScope
+				for newHigh < high && slice[newHigh] < target {
+					low = newHigh // just verified that newHigh is lower than target
+					widenScope <<= 1
+					newHigh = low + widenScope
+				}
+				if newHigh < high {
+					high = newHigh
+				}
 			}
 		} else {
-			// low and high are close, so just do a linear search
-			low++
-			high--
+			// Fall back to binary search
+			for low <= high {
+				mid := low + (high-low)/2
+				if slice[mid] == target {
+					return mid // Found
+				} else if slice[mid] < target {
+					low = mid + 1 // Search right half
+				} else {
+					high = mid - 1 // Search left half
+				}
+			}
+			return -1 // Not found
 		}
 	}
 	return -1
 }
 
-// macnealeSearch vanilla style!
-func macnealeSearch(slice []int, target int) int {
+// binarySearch vanilla style!
+func binarySearch(slice []int, target int) int {
 	low := 0
 	high := len(slice) - 1
 	for low <= high {
