@@ -3,20 +3,33 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"strconv"
 	"time"
 )
 
+const binarySizeCutoff = 256
+
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: prollySearch <size>")
+		return
+	}
+
+	size, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		fmt.Println("Invalid size argument:", err)
+		return
+	}
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	lastVal := r.Int()
-	vals := make([]int, 0, 100000000)
+	vals := make([]int, 0, size)
 	for len(vals) < cap(vals) {
 		lastVal += r.Intn(23)
 		vals = append(vals, lastVal)
 	}
-
-	_ = prollyBinSearch(vals, vals[23029])
 
 	searchCount := vals[len(vals)-1] - vals[0]
 	startTimeBin := time.Now()
@@ -31,9 +44,7 @@ func main() {
 	}
 	dur := time.Since(startTime)
 
-	fmt.Printf("Searches performed: %d. On slice size: %d\n", searchCount, len(vals))
-	fmt.Printf("ProllySearch: %v\n", dur)
-	fmt.Printf("BinarySearch: %v\n", durBin)
+	fmt.Printf("%d,%d,%d,%d\n", len(vals), searchCount, dur.Nanoseconds(), durBin.Nanoseconds())
 }
 
 func prollyBinSearch(slice []int, target int) int {
@@ -55,7 +66,7 @@ func prollyBinSearch(slice []int, target int) int {
 			return high
 		}
 
-		if high-low > 1024 {
+		if high-low > binarySizeCutoff {
 			// Determine the estimated position of the target in the slice, as a float from 0 to 1.
 			minVal := slice[low]
 			maxVal := slice[high]
@@ -85,7 +96,7 @@ func prollyBinSearch(slice []int, target int) int {
 				newLow := high - widenScope
 				for newLow > low && slice[newLow] > target {
 					high = newLow // just verified that newLow is higher than target
-					widenScope <<= 1
+					widenScope <<= 2
 					newLow = high - widenScope
 				}
 				if newLow > low {
@@ -97,7 +108,7 @@ func prollyBinSearch(slice []int, target int) int {
 				newHigh := low + widenScope
 				for newHigh < high && slice[newHigh] < target {
 					low = newHigh // just verified that newHigh is lower than target
-					widenScope <<= 1
+					widenScope <<= 2
 					newHigh = low + widenScope
 				}
 				if newHigh < high {
