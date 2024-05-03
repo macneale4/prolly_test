@@ -63,3 +63,30 @@ func TestProllyBinSearch(t *testing.T) {
 	idx = prollyBinSearch(pf, pf[23]-1)
 	assert.Equal(t, -1, idx)
 }
+
+func TestAaronSearch(t *testing.T) {
+	r := rand.New(rand.NewSource(42))
+	curVal := r.Int()
+	pf := make([]int, 10000)
+	for i := 0; i < 10000; i++ {
+		pf[i] = curVal
+		curVal += r.Intn(10)
+	}
+
+	for i := 0; i < 10000; i++ {
+		idx := aaronSearch(pf, pf[i])
+		// There are dupes in the list, so we don't always end up with the same index.
+		assert.Equal(t, pf[i], pf[idx])
+	}
+
+	idx := aaronSearch(pf, pf[0]-1)
+	assert.Equal(t, 0, idx)
+	idx = aaronSearch(pf, pf[9999]+1)
+	assert.Equal(t, 10000, idx)
+
+	// 23 is not a dupe, and neighbors don't match. stable due to seed.
+	idx = aaronSearch(pf, pf[23]+1)
+	assert.Equal(t, 10000, idx)
+	idx = aaronSearch(pf, pf[23]-1)
+	assert.Equal(t, 10000, idx)
+}

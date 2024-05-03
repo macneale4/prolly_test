@@ -38,13 +38,19 @@ func main() {
 	}
 	durBin := time.Since(startTimeBin)
 
-	startTime := time.Now()
+	startTimeProlly := time.Now()
 	for i := vals[0]; i <= vals[len(vals)-1]; i++ {
 		_ = prollyBinSearch(vals, i)
 	}
-	dur := time.Since(startTime)
+	durProlly := time.Since(startTimeProlly)
 
-	fmt.Printf("%d,%d,%d,%d\n", len(vals), searchCount, dur.Nanoseconds(), durBin.Nanoseconds())
+	startAaronTime := time.Now()
+	for i := vals[0]; i <= vals[len(vals)-1]; i++ {
+		_ = aaronSearch(vals, i)
+	}
+	durAaron := time.Since(startAaronTime)
+
+	fmt.Printf("%d,%d,%d,%d,%d\n", len(vals), searchCount, durProlly.Nanoseconds(), durBin.Nanoseconds(), durAaron.Nanoseconds())
 }
 
 func prollyBinSearch(slice []int, target int) int {
@@ -131,6 +137,45 @@ func prollyBinSearch(slice []int, target int) int {
 		}
 	}
 	return -1
+}
+
+func aaronSearch(slice []int, target int) int {
+	n := len(slice)
+	lo := slice[0]
+	hi := slice[n-1]
+	i := 0
+	j := n - 1
+	for i < j {
+		// If lo is already at target, it can only be |i|.
+		// Similarly, if hi and lo are equal, it can only be |i|.
+		if lo >= target || hi == lo {
+			return i
+		}
+		// Each index between [i,j) accounts for a range of about |bucketSz| numbers.
+		bucketSz := (hi - lo) / (j - i)
+		// Our next guessed index is i + number of buckets between lo and target.
+		h := i + int((target-lo)/bucketSz)
+		// Clamp h to be strictly less than j. Our guess must be in [i,j).
+		if h >= j {
+			h = j - 1
+		}
+		if slice[h] < target {
+			i = h + 1
+			// No need to update lo if i == n, since this loop will be ending.
+			if i < n {
+				lo = slice[i]
+			}
+		} else {
+			j = h
+			hi = slice[h]
+		}
+	}
+
+	if slice[i] != target {
+		return n
+	}
+
+	return i
 }
 
 // binarySearch vanilla style!
